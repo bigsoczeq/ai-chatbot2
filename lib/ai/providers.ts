@@ -4,6 +4,7 @@ import {
   wrapLanguageModel,
 } from 'ai';
 import { xai } from '@ai-sdk/xai';
+import { createAzure } from '@ai-sdk/azure';
 import { isTestEnvironment } from '../constants';
 import {
   artifactModel,
@@ -11,6 +12,13 @@ import {
   reasoningModel,
   titleModel,
 } from './models.test';
+
+// Create an Azure OpenAI provider instance
+const azureOpenAI = createAzure({
+  baseURL: process.env.AZURE_OPENAI_ENDPOINT,
+  apiKey: process.env.AZURE_OPENAI_API_KEY,
+  apiVersion: process.env.AZURE_OPENAI_API_VERSION,
+});
 
 export const myProvider = isTestEnvironment
   ? customProvider({
@@ -24,6 +32,7 @@ export const myProvider = isTestEnvironment
   : customProvider({
       languageModels: {
         'chat-model': xai('grok-2-vision-1212'),
+        'azure-openai-model': azureOpenAI(process.env.AZURE_OPENAI_DEPLOYMENT_NAME || 'gpt-4.1'),
         'chat-model-reasoning': wrapLanguageModel({
           model: xai('grok-3-mini-beta'),
           middleware: extractReasoningMiddleware({ tagName: 'think' }),

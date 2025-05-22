@@ -13,6 +13,11 @@ export const chatModels: Array<ChatModel> = [
     description: 'Primary model for all-purpose chat',
   },
   {
+    id: 'azure-openai-model',
+    name: 'Azure OpenAI',
+    description: 'Chat with Azure OpenAI model',
+  },
+  {
     id: 'chat-model-reasoning',
     name: 'Reasoning model',
     description: 'Uses advanced reasoning',
