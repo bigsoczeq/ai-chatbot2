@@ -14,14 +14,8 @@ export const getCompanyByKRS = tool({
       }),
   }),
   execute: async ({ krs_number }) => {
-    console.log('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
-    console.log('!!!! [DEBUG] getCompanyByKRS execute() CALLED with krs_number:', krs_number, '!!!!');
-    console.log('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
-    console.log('[getCompanyByKRS EXECUTE] Called with krs_number:', krs_number);
     const baseURL = process.env.PLATFORM_API_BASE_URL;
     const apiKey = process.env.PLATFORM_API_KEY;
-    console.log('[getCompanyByKRS EXECUTE] PLATFORM_API_BASE_URL:', baseURL);
-    console.log('[getCompanyByKRS EXECUTE] PLATFORM_API_KEY:', apiKey ? "SET" : "NOT SET"); // Don't log the key itself
 
     if (!baseURL || !apiKey) {
       console.error('PLATFORM_API_BASE_URL or PLATFORM_API_KEY is not set.');

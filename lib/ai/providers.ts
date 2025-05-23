@@ -22,12 +22,12 @@ const azureOpenAI = createAzure({
   // Ensure AZURE_OPENAI_API_VERSION matches the one expected by your deployment (e.g., 2025-01-01-preview)
   apiVersion: process.env.AZURE_OPENAI_API_VERSION,
   fetch: async (url, options) => {
-    console.log('[Azure OpenAI Request Log] URL:', url.toString());
-    console.log('[Azure OpenAI Request Log] Options:', JSON.stringify(options, null, 2));
+    // console.log('[Azure OpenAI Request Log] URL:', url.toString()); // Verbose, remove or keep if needed
+    // console.log('[Azure OpenAI Request Log] Options:', JSON.stringify(options, null, 2)); // Verbose, remove or keep if needed
 
     const response = await fetch(url, options);
 
-    console.log('[Azure OpenAI Response Log] Status:', response.status);
+    // console.log('[Azure OpenAI Response Log] Status:', response.status); // Verbose, remove or keep if needed
     // const responseBody = await response.clone().text(); // DO NOT CONSUME THE BODY HERE
     // console.log('[Azure OpenAI Response Log] Body:', responseBody); // Log only metadata if body is streamed
 

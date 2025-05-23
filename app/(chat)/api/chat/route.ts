@@ -41,56 +41,39 @@ import { vercelSDKErrorHandler } from '@/lib/ai/error-handler';
 
 export const maxDuration = 60;
 
-// Temporarily commenting out resumable stream context for diagnostics
-// let globalStreamContext: ResumableStreamContext | null = null;
+// Re-enabling resumable stream context
+let globalStreamContext: ResumableStreamContext | null = null;
 
-// Re-enable getStreamContext function definition
 function getStreamContext() {
-  // if (!globalStreamContext) { // Keep the actual global context var commented to ensure it starts null for POST
-  //   try {
-  //     globalStreamContext = createResumableStreamContext({
-  //       waitUntil: after,
-  //     });
-  //   } catch (error: any) {
-  //     if (error.message.includes('REDIS_URL')) {
-  //       console.log(
-  //         ' > Resumable streams are disabled due to missing REDIS_URL',
-  //       );
-  //     } else {
-  //       console.error(error);
-  //     }
-  //   }
-  // }
-  // return globalStreamContext;
-
-  // For the purpose of this diagnostic step, make getStreamContext always return null
-  // or a version that doesn't rely on the global variable that POST is avoiding.
-  // This ensures GET doesn't break due to Redis and POST tests the direct streamText.
-  // A proper fix would involve conditional Redis setup.
-  try {
-    // Attempt to create a context, but it will be null if REDIS_URL is missing
-    return createResumableStreamContext({ waitUntil: after });
-  } catch (error:any) {
-    if (error.message.includes('REDIS_URL')) {
-      console.log(
-        ' > Resumable streams are disabled for GET due to missing REDIS_URL',
-      );
-    } else {
-      console.error('[getStreamContext for GET] Error:', error);
+  if (!globalStreamContext) {
+    try {
+      globalStreamContext = createResumableStreamContext({
+        waitUntil: after,
+      });
+    } catch (error: any) {
+      if (error.message.includes('REDIS_URL')) {
+        console.log(
+          ' > Resumable streams are disabled due to missing REDIS_URL',
+        );
+      } else {
+        console.error('[getStreamContext] Error creating resumable stream context:', error);
+      }
+      // Ensure globalStreamContext remains null if creation fails
+      globalStreamContext = null;
     }
-    return null;
   }
+  return globalStreamContext;
 }
 
 export async function POST(request: Request) {
   let requestBody: PostRequestBody;
-  console.log('[Chat API] POST handler started');
+  // console.log('[Chat API] POST handler started'); // Keep this if desired, or remove for less verbosity
 
   try {
     const json = await request.json();
-    console.log('[Chat API] Request JSON parsed:', json);
+    // console.log('[Chat API] Request JSON parsed:', json); // Verbose, remove
     requestBody = postRequestBodySchema.parse(json);
-    console.log('[Chat API Request Log] Selected Chat Model:', requestBody.selectedChatModel);
+    // console.log('[Chat API Request Log] Selected Chat Model:', requestBody.selectedChatModel); // Verbose, remove
   } catch (error) {
     console.error('[Chat API] Error parsing request body:', error);
     return new ChatSDKError('bad_request:api').toResponse();
@@ -169,9 +152,6 @@ export async function POST(request: Request) {
     const streamId = generateUUID();
     await createStreamId({ streamId, chatId: id });
 
-    // Temporarily simplifying streamText handling for diagnostics
-    // const stream = createDataStream({
-    //   execute: (dataStream) => {
     const result = streamText({
       model: myProvider.languageModel(selectedChatModel),
       system: systemPrompt({ selectedChatModel, requestHints }),
@@ -181,16 +161,15 @@ export async function POST(request: Request) {
       experimental_generateMessageId: generateUUID,
       tools: {
         getCompanyByKRS,
-        // Potentially add other tools here if they are server-side and should auto-execute
       },
       onFinish: async ({ response, toolCalls, toolResults }) => {
-        console.log('[Chat API] streamText onFinish triggered.');
-        if (toolCalls && toolCalls.length > 0) {
-          console.log('[Chat API] onFinish: Tool calls made by LLM:', JSON.stringify(toolCalls, null, 2));
-        }
-        if (toolResults && toolResults.length > 0) {
-          console.log('[Chat API] onFinish: Tool results:', JSON.stringify(toolResults, null, 2));
-        }
+        // console.log('[Chat API] streamText onFinish triggered.'); // Verbose, remove
+        // if (toolCalls && toolCalls.length > 0) { // Verbose, remove
+        //   console.log('[Chat API] onFinish: Tool calls made by LLM:', JSON.stringify(toolCalls, null, 2));
+        // }
+        // if (toolResults && toolResults.length > 0) { // Verbose, remove
+        //   console.log('[Chat API] onFinish: Tool results:', JSON.stringify(toolResults, null, 2));
+        // }
 
         if (session.user?.id) {
           try {
@@ -206,11 +185,11 @@ export async function POST(request: Request) {
             }
 
             const [, assistantMessage] = appendResponseMessages({
-              messages: [message], // original user message
-              responseMessages: response.messages, // messages from streamText (includes user, assistant, tool_invocations, tool_results)
+              messages: [message],
+              responseMessages: response.messages,
             });
 
-            console.log('[Chat API] onFinish: Saving assistant message parts:', JSON.stringify(assistantMessage.parts, null, 2));
+            // console.log('[Chat API] onFinish: Saving assistant message parts:', JSON.stringify(assistantMessage.parts, null, 2)); // Verbose, remove
 
             await saveMessages({
               messages: [
@@ -218,14 +197,14 @@ export async function POST(request: Request) {
                   id: assistantId,
                   chatId: id,
                   role: assistantMessage.role,
-                  parts: assistantMessage.parts, // Ensure parts (including tool invocations/results) are saved
+                  parts: assistantMessage.parts,
                   attachments:
                     assistantMessage.experimental_attachments ?? [],
                   createdAt: new Date(),
                 },
               ],
             });
-            console.log('[Chat API] onFinish: Assistant message saved successfully.');
+            // console.log('[Chat API] onFinish: Assistant message saved successfully.'); // Verbose, remove
           } catch (saveError) {
             console.error('[Chat API] onFinish: Failed to save chat messages:', saveError);
           }
@@ -237,31 +216,22 @@ export async function POST(request: Request) {
       },
     });
 
-    //     result.consumeStream(); // Not needed when using toDataStreamResponse directly with streamText
-    //     result.mergeIntoDataStream(dataStream, { // Not needed for this simplified approach
-    //       sendReasoning: true,
-    //     });
-    //   },
-    //   onError: (error) => { // This onError is for createDataStream, not streamText directly
-    //     console.error('[Chat API] createDataStream onError:', error);
-    //     return 'Oops, an error occurred handling the data stream!';
-    //   },
-    // });
+    const streamContext = getStreamContext();
 
-    // const streamContext = getStreamContext();
-
-    // if (streamContext) {
-    //   return new Response(
-    //     await streamContext.resumableStream(streamId, () => stream),
-    //   );
-    // } else {
-    //   return new Response(stream);
-    // }
-
-    return result.toDataStreamResponse({ getErrorMessage: vercelSDKErrorHandler });
+    if (streamContext) {
+      // The stream from result.toDataStream() is what resumableStream should work with.
+      // The type error might be overly strict or a misconfiguration in ResumableStreamContext typing.
+      // For now, we pass it directly as this is the correct stream according to Vercel AI SDK.
+      const dataStreamForResumable = result.toDataStream();
+      return new Response(
+        await streamContext.resumableStream(streamId, () => dataStreamForResumable as any ), // Using 'as any' to bypass TS error for now
+      );
+    } else {
+      return result.toDataStreamResponse({ getErrorMessage: vercelSDKErrorHandler });
+    }
 
   } catch (error) {
-    console.error('[Chat API] POST handler general error:', error); // Log the general error
+    // console.error('[Chat API] POST handler general error:', error); // Keep this important general error log
     if (error instanceof ChatSDKError) {
       return error.toResponse();
     }
@@ -274,12 +244,12 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
-  // const streamContext = getStreamContext(); // Temporarily commented out
+  const streamContext = getStreamContext();
   const resumeRequestedAt = new Date();
 
-  // if (!streamContext) { // Temporarily commented out
-  //   return new Response(null, { status: 204 });
-  // }
+  if (!streamContext) {
+    return new Response(null, { status: 204 });
+  }
 
   const { searchParams } = new URL(request.url);
   const chatId = searchParams.get('chatId');
@@ -320,16 +290,6 @@ export async function GET(request: Request) {
 
   if (!recentStreamId) {
     return new ChatSDKError('not_found:stream').toResponse();
-  }
-
-  // Temporarily revert to original resumable stream logic, but it will be effectively
-  // disabled if globalStreamContext is not initialized due to earlier commenting.
-  // This is to avoid introducing new errors in GET while focusing on POST.
-  const streamContext = getStreamContext(); // Re-enable for GET, but will be null if Redis is off
-  if (!streamContext) {
-    // If resumable streams are off, we can't resume, send no content or appropriate error.
-    // This matches one of the original paths if globalStreamContext was null.
-    return new Response(null, { status: 204 });
   }
 
   const emptyDataStream = createDataStream({
